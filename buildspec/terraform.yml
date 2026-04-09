@@ -16,30 +16,23 @@ phases:
       - mv /tmp/terraform-bin/terraform /usr/local/bin/
       - terraform version
 
-  pre_build:
-    commands:
-      - cd $TERRAFORM_WORKDIR
-      - terraform init -reconfigure
-      - terraform validate
-
   build:
     commands:
       - |
         if [ "$ACTION" = "destroy" ]; then
+          cd $TERRAFORM_WORKDIR
           terraform destroy -auto-approve
         else
           cd $TERRAFORM_WORKDIR
+          terraform init -reconfigure
+          terraform validate
           terraform plan -out=tfplan
           terraform apply -auto-approve tfplan
           terraform output -json > ../../ansible/outputs.json
+          terraform output -json > terraform-outputs.json || echo "{}" > terraform-outputs.json
+          aws s3 cp terraform-outputs.json s3://$S3_BUCKET/terraform-outputs.json --region $AWS_REGION
+          aws s3 cp ../../ansible/outputs.json s3://$S3_BUCKET/ansible-outputs.json --region $AWS_REGION
         fi
-
-  post_build:
-    commands:
-      - cd terraform/ec2
-      - terraform output -json > terraform-outputs.json || echo "{}" > terraform-outputs.json
-      - aws s3 cp terraform-outputs.json s3://$S3_BUCKET/terraform-outputs.json --region $AWS_REGION
-      - aws s3 cp ../../ansible/outputs.json s3://$S3_BUCKET/ansible-outputs.json --region $AWS_REGION
 
 artifacts:
   files:
