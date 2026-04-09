@@ -26,7 +26,7 @@ phases:
   pre_build:
     commands:
       - echo Pre-build phase...
-      - cd terraform   # ← ここ重要！！！
+      - cd terraform/ec2
 
       - terraform init
       - terraform validate
