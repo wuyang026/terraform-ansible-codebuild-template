@@ -1,15 +1,3 @@
-provider "aws" {
-  region = var.region
-}
-
-terraform {
-  backend "s3" {
-    bucket = var.s3_bucket
-    key    = "terraform/ec2/terraform.tfstate"
-    region = var.region
-  }
-}
-
 resource "aws_iam_role" "ec2_role" {
   name = "ec2-ssm-role"
 
