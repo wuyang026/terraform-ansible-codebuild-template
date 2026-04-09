@@ -61,13 +61,19 @@ resource "aws_security_group" "db_sg" {
 }
 
 resource "aws_instance" "primary" {
-  count         = var.primary_count
-  ami           = var.ami_id
-  instance_type = var.instance_type
-  subnet_id     = count.index % 2 == 0 ? var.subnet_1a_id : var.subnet_1b_id
+  count                  = var.primary_count
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
+  subnet_id              = count.index % 2 == 0 ? var.subnet_1a_id : var.subnet_1b_id
   vpc_security_group_ids = [aws_security_group.db_sg.id]
+  iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
 
-  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
+  user_data = <<-EOF
+              #!/bin/bash
+              yum install -y https://s3.${var.region}.amazonaws.com/amazon-ssm-${var.region}/latest/linux_amd64/amazon-ssm-agent.rpm
+              systemctl enable amazon-ssm-agent
+              systemctl start amazon-ssm-agent
+              EOF
 
   ebs_block_device {
     device_name = "/dev/sdh"
@@ -82,13 +88,19 @@ resource "aws_instance" "primary" {
 }
 
 resource "aws_instance" "standby" {
-  count         = var.standby_count
-  ami           = var.ami_id
-  instance_type = var.instance_type
-  subnet_id     = count.index % 2 == 0 ? var.subnet_1a_id : var.subnet_1b_id
+  count                  = var.standby_count
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
+  subnet_id              = count.index % 2 == 0 ? var.subnet_1a_id : var.subnet_1b_id
   vpc_security_group_ids = [aws_security_group.db_sg.id]
+  iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
 
-  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
+  user_data = <<-EOF
+              #!/bin/bash
+              yum install -y https://s3.${var.region}.amazonaws.com/amazon-ssm-${var.region}/latest/linux_amd64/amazon-ssm-agent.rpm
+              systemctl enable amazon-ssm-agent
+              systemctl start amazon-ssm-agent
+              EOF
 
   ebs_block_device {
     device_name = "/dev/sdh"
@@ -104,28 +116,28 @@ resource "aws_instance" "standby" {
 
 # SSM VPC Endpoint
 resource "aws_vpc_endpoint" "ssm" {
-  vpc_id            = var.vpc_id
-  service_name      = "com.amazonaws.${var.region}.ssm"
-  vpc_endpoint_type = "Interface"
-  subnet_ids        = [var.subnet_1a_id, var.subnet_1b_id]
-  security_group_ids = [aws_security_group.db_sg.id]
+  vpc_id              = var.vpc_id
+  service_name        = "com.amazonaws.${var.region}.ssm"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = [var.subnet_1a_id, var.subnet_1b_id]
+  security_group_ids  = [aws_security_group.db_sg.id]
   private_dns_enabled = true
 }
 
 resource "aws_vpc_endpoint" "ssm_messages" {
-  vpc_id            = var.vpc_id
-  service_name      = "com.amazonaws.${var.region}.ssmmessages"
-  vpc_endpoint_type = "Interface"
-  subnet_ids        = [var.subnet_1a_id, var.subnet_1b_id]
-  security_group_ids = [aws_security_group.db_sg.id]
+  vpc_id              = var.vpc_id
+  service_name        = "com.amazonaws.${var.region}.ssmmessages"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = [var.subnet_1a_id, var.subnet_1b_id]
+  security_group_ids  = [aws_security_group.db_sg.id]
   private_dns_enabled = true
 }
 
 resource "aws_vpc_endpoint" "ec2_messages" {
-  vpc_id            = var.vpc_id
-  service_name      = "com.amazonaws.${var.region}.ec2messages"
-  vpc_endpoint_type = "Interface"
-  subnet_ids        = [var.subnet_1a_id, var.subnet_1b_id]
-  security_group_ids = [aws_security_group.db_sg.id]
+  vpc_id              = var.vpc_id
+  service_name        = "com.amazonaws.${var.region}.ec2messages"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = [var.subnet_1a_id, var.subnet_1b_id]
+  security_group_ids  = [aws_security_group.db_sg.id]
   private_dns_enabled = true
 }
