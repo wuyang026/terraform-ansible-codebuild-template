@@ -5,37 +5,38 @@ phases:
     commands:
       - echo Installing dependencies...
 
-      # unzip をインストール
       - yum install -y unzip
 
-      # Terraform をダウンロード
       - curl -fLO https://releases.hashicorp.com/terraform/1.6.6/terraform_1.6.6_linux_amd64.zip
 
-      # 一時ディレクトリ作成
       - mkdir -p /tmp/terraform-bin
 
-      # /tmp に解凍（衝突回避）
       - unzip -o terraform_1.6.6_linux_amd64.zip -d /tmp/terraform-bin
 
-      # 実行ファイルを配置
       - mv /tmp/terraform-bin/terraform /usr/local/bin/
 
-      # バージョン確認
       - terraform version
 
   pre_build:
     commands:
       - echo Pre-build phase...
       - cd terraform/ec2
-
       - terraform init
       - terraform validate
 
   build:
     commands:
       - echo Build phase...
-      - terraform plan -out=tfplan
-      - terraform apply -auto-approve tfplan
+
+      - |
+        if [ "$ACTION" = "destroy" ]; then
+          echo "Running destroy..."
+          terraform destroy -auto-approve
+        else
+          echo "Running apply..."
+          terraform plan -out=tfplan
+          terraform apply -auto-approve tfplan
+        fi
 
   post_build:
     commands:
