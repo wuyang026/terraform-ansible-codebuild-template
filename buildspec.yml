@@ -1,43 +1,41 @@
 version: 0.2
 
+env:
+  variables:
+    TERRAFORM_WORKDIR: "terraform/ec2"
+    S3_BUCKET: "go-s3-bucket-test"
+
 phases:
   install:
     commands:
-      - echo Installing dependencies...
-
-      - yum install -y unzip
-
+      - yum install -y unzip curl
       - curl -fLO https://releases.hashicorp.com/terraform/1.6.6/terraform_1.6.6_linux_amd64.zip
-
       - mkdir -p /tmp/terraform-bin
-
       - unzip -o terraform_1.6.6_linux_amd64.zip -d /tmp/terraform-bin
-
       - mv /tmp/terraform-bin/terraform /usr/local/bin/
-
       - terraform version
 
   pre_build:
     commands:
-      - echo Pre-build phase...
-      - cd terraform/ec2
+      - cd $TERRAFORM_WORKDIR
       - terraform init
       - terraform validate
 
   build:
     commands:
-      - echo Build phase...
-
       - |
         if [ "$ACTION" = "destroy" ]; then
-          echo "Running destroy..."
           terraform destroy -auto-approve
         else
-          echo "Running apply..."
           terraform plan -out=tfplan
           terraform apply -auto-approve tfplan
         fi
 
   post_build:
     commands:
-      - echo Post-build phase...
+      - terraform output -json > terraform-outputs.json
+      - aws s3 cp terraform-outputs.json s3://$S3_BUCKET/terraform-outputs.json
+
+artifacts:
+  files:
+    - terraform-outputs.json

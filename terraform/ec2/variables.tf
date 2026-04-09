@@ -49,11 +49,11 @@ variable "db_port" {
 variable "primary_count" {
   description = "プライマリDBサーバーの数"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "standby_count" {
   description = "スタンバイDBサーバーの数"
   type        = number
-  default     = 2
+  default     = 1
 }
