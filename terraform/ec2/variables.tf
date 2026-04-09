@@ -56,5 +56,5 @@ variable "s3_bucket" {
 # SSM VPC Endpointを作成するかどうかを制御
 variable "create_ssm_endpoint" {
   type    = bool
-  default = true
+  default = false
 }
