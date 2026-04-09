@@ -4,23 +4,30 @@ phases:
   install:
     commands:
       - echo Installing dependencies...
-      - apt-get update
-      - apt-get install -y terraform ansible python3
+      - yum install -y unzip
+      - curl -LO https://releases.hashicorp.com/terraform/1.6.6/terraform_1.6.6_linux_amd64.zip
+      - unzip terraform_1.6.6_linux_amd64.zip
+      - mv terraform /usr/local/bin/
+
   pre_build:
     commands:
       - echo Pre-build phase...
       - cd ec2
       - terraform init
       - terraform validate
+
   build:
     commands:
       - echo Build phase...
       - terraform plan -out=tfplan
       - terraform apply -auto-approve tfplan
-      - terraform output -json > ../ansible/outputs.json
-      - cd ../ansible
-      - python3 generate_inventory.py
-      - ansible-playbook -i inventory/hosts playbooks/main.yml
+
+      # ===== Ansible 部分先注释掉 =====
+      # - terraform output -json > ../ansible/outputs.json
+      # - cd ../ansible
+      # - python3 generate_inventory.py
+      # - ansible-playbook -i inventory/hosts playbooks/main.yml
+
   post_build:
     commands:
       - echo Post-build phase...
