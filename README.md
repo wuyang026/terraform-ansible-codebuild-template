@@ -32,7 +32,11 @@
 
 ## CI/CD
 
-`buildspec.yml`を使ってAWS CodeBuildパイプラインで使用します。
+`buildspec/` フォルダに2つのビルド仕様があります：
+- `buildspec/terraform.yml`: Terraformのデプロイ専用
+- `buildspec/ansible.yml`: Ansibleの構成専用
+
+AWS CodeBuildで別々のプロジェクトを作成して使用します。
 
 ## 拡張
 

@@ -1,0 +1,31 @@
+version: 0.2
+
+env:
+  variables:
+    S3_BUCKET: "go-s3-bucket-test"
+
+phases:
+  install:
+    commands:
+      - yum update -y --allowerasing
+      - yum install -y python3 ansible --allowerasing
+      - ansible --version
+      - python3 --version
+
+  pre_build:
+    commands:
+      - aws s3 cp s3://$S3_BUCKET/ansible-outputs.json ansible/outputs.json --region $AWS_REGION
+
+  build:
+    commands:
+      - cd ansible
+      - python3 generate_inventory.py
+      - ansible-playbook -i inventory/hosts playbooks/main.yml
+
+  post_build:
+    commands:
+      - echo "Ansible execution completed"
+
+artifacts:
+  files:
+    - ansible/inventory/hosts
