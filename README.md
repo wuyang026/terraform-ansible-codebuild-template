@@ -9,8 +9,9 @@
   - `variables.tf`: 変数定義
   - `outputs.tf`: 出力定義
 - `ansible/`: Ansibleプレイブックとインベントリ
+  - `playbooks/`: プレイブックとロール
 - `scripts/`: ユーティリティスクリプト
-- `buildspec.yml`: AWS CodeBuildのビルド仕様
+- `buildspec/`: AWS CodeBuildのビルド仕様
 
 ## DBサーバー構成
 
