@@ -2,6 +2,14 @@ provider "aws" {
   region = var.region
 }
 
+terraform {
+  backend "s3" {
+    bucket = var.s3_bucket
+    key    = "terraform/ec2/terraform.tfstate"
+    region = var.region
+  }
+}
+
 resource "aws_iam_role" "ec2_role" {
   name = "ec2-ssm-role"
 
@@ -27,12 +35,10 @@ resource "aws_iam_instance_profile" "ec2_profile" {
   role = aws_iam_role.ec2_role.name
 }
 
-# DBサーバー用のセキュリティグループ
 resource "aws_security_group" "db_sg" {
   name_prefix = "db-sg-"
   vpc_id      = var.vpc_id
 
-  # SSHアクセス
   ingress {
     from_port   = 22
     to_port     = 22
@@ -40,7 +46,13 @@ resource "aws_security_group" "db_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # DBポートアクセス
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   ingress {
     from_port   = var.db_port
     to_port     = var.db_port
@@ -48,7 +60,6 @@ resource "aws_security_group" "db_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # すべてのアウトバウンドトラフィック
   egress {
     from_port   = 0
     to_port     = 0
@@ -61,7 +72,6 @@ resource "aws_security_group" "db_sg" {
   }
 }
 
-# プライマリDBサーバー
 resource "aws_instance" "primary" {
   count         = var.primary_count
   ami           = var.ami_id
@@ -83,7 +93,6 @@ resource "aws_instance" "primary" {
   }
 }
 
-# スタンバイDBサーバー
 resource "aws_instance" "standby" {
   count         = var.standby_count
   ami           = var.ami_id
@@ -103,4 +112,32 @@ resource "aws_instance" "standby" {
     Name = "StandbyDB-${count.index + 1}"
     Role = "standby"
   }
+}
+
+# SSM VPC Endpoint
+resource "aws_vpc_endpoint" "ssm" {
+  vpc_id            = var.vpc_id
+  service_name      = "com.amazonaws.${var.region}.ssm"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = [var.subnet_1a_id, var.subnet_1b_id]
+  security_group_ids = [aws_security_group.db_sg.id]
+  private_dns_enabled = true
+}
+
+resource "aws_vpc_endpoint" "ssm_messages" {
+  vpc_id            = var.vpc_id
+  service_name      = "com.amazonaws.${var.region}.ssmmessages"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = [var.subnet_1a_id, var.subnet_1b_id]
+  security_group_ids = [aws_security_group.db_sg.id]
+  private_dns_enabled = true
+}
+
+resource "aws_vpc_endpoint" "ec2_messages" {
+  vpc_id            = var.vpc_id
+  service_name      = "com.amazonaws.${var.region}.ec2messages"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = [var.subnet_1a_id, var.subnet_1b_id]
+  security_group_ids = [aws_security_group.db_sg.id]
+  private_dns_enabled = true
 }
