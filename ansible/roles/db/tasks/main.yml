@@ -1,0 +1,7 @@
+---
+# DB専用サービス用のロール
+# 今後ここに DB 専用設定を追加します。
+- name: Placeholder for DB-specific tasks
+  debug:
+    msg: "DB-specific tasks can be added here later"
+  when: false

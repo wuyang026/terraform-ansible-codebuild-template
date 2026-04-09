@@ -28,6 +28,11 @@ variable "subnet_1b_id" {
   default = "subnet-073b3a850e74ba2d4"
 }
 
+variable "subnet_1c_id" {
+  type    = string
+  default = "subnet-01e60887e009e5ca1"
+}
+
 variable "key_name" {
   type    = string
   default = "my-key-pair"
@@ -40,12 +45,12 @@ variable "db_port" {
 
 variable "primary_count" {
   type    = number
-  default = 1
+  default = 9
 }
 
 variable "standby_count" {
   type    = number
-  default = 1
+  default = 9
 }
 
 variable "s3_bucket" {

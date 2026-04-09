@@ -1,25 +1,14 @@
 ---
-- name: DBサーバーの設定
+- name: Common services for all servers
   hosts: dbservers
   become: yes
-  tasks:
-    - name: MySQLのインストール
-      apt:
-        name: mysql-server
-        state: present
-      when: ansible_os_family == "Debian"
+  roles:
+    - common
 
-    - name: MySQLサービスの開始
-      service:
-        name: mysql
-        state: started
-        enabled: yes
-
-    - name: MySQLのセキュアインストール
-      mysql_secure_installation:
-        login_password: ''
-        root_password: 'new_root_password'
-        remove_anonymous_users: yes
-        disallow_root_login_remotely: yes
-        remove_test_db: yes
-      when: ansible_os_family == "Debian"
+# 個別サービスは roles/db などに分離して追加できます
+# 例:
+# - name: DB専用サービス
+#   hosts: dbservers
+#   become: yes
+#   roles:
+#     - db

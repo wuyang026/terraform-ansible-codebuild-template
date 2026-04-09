@@ -9,12 +9,14 @@ phases:
   install:
     commands:
       - yum update -y --allowerasing
-      - yum install -y unzip curl --allowerasing
+      - yum install -y unzip curl python3 ansible --allowerasing
       - curl -fLO https://releases.hashicorp.com/terraform/1.6.6/terraform_1.6.6_linux_amd64.zip
       - mkdir -p /tmp/terraform-bin
       - unzip -o terraform_1.6.6_linux_amd64.zip -d /tmp/terraform-bin
       - mv /tmp/terraform-bin/terraform /usr/local/bin/
       - terraform version
+      - ansible --version
+      - python3 --version
 
   pre_build:
     commands:
@@ -30,10 +32,15 @@ phases:
         else
           terraform plan -out=tfplan
           terraform apply -auto-approve tfplan
+          terraform output -json > ../ansible/outputs.json
+          cd ../ansible
+          python3 generate_inventory.py
+          ansible-playbook -i inventory/hosts playbooks/main.yml
         fi
 
   post_build:
     commands:
+      - cd $TERRAFORM_WORKDIR
       - terraform output -json > terraform-outputs.json || echo "{}" > terraform-outputs.json
       - aws s3 cp terraform-outputs.json s3://$S3_BUCKET/terraform-outputs.json --region $AWS_REGION
 

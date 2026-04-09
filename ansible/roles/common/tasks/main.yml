@@ -1,0 +1,28 @@
+---
+# 共通サービス: すべてのサーバーに適用
+- name: Disable SELinux immediately for RHEL 9
+  ansible.posix.selinux:
+    policy: targeted
+    state: disabled
+    immediate: yes
+  when: ansible_os_family == "RedHat"
+
+- name: Disable firewalld for RHEL 9
+  ansible.builtin.systemd:
+    name: firewalld
+    state: stopped
+    enabled: no
+  when: ansible_os_family == "RedHat"
+
+- name: Install Amazon SSM Agent for RHEL 9
+  yum:
+    name: "https://s3.ap-south-1.amazonaws.com/amazon-ssm-ap-south-1/latest/linux_amd64/amazon-ssm-agent.rpm"
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Ensure Amazon SSM Agent is enabled and started
+  service:
+    name: amazon-ssm-agent
+    state: started
+    enabled: yes
+  when: ansible_os_family == "RedHat"
