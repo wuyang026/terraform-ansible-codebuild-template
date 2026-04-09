@@ -30,10 +30,11 @@ phases:
         if [ "$ACTION" = "destroy" ]; then
           terraform destroy -auto-approve
         else
+          cd $TERRAFORM_WORKDIR
           terraform plan -out=tfplan
           terraform apply -auto-approve tfplan
-          terraform output -json > ../ansible/outputs.json
-          cd ../ansible
+          terraform output -json > ../../ansible/outputs.json
+          cd ../../ansible
           python3 generate_inventory.py
           ansible-playbook -i inventory/hosts playbooks/main.yml
         fi

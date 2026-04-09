@@ -45,12 +45,12 @@ variable "db_port" {
 
 variable "primary_count" {
   type    = number
-  default = 9
+  default = 1
 }
 
 variable "standby_count" {
   type    = number
-  default = 9
+  default = 1
 }
 
 variable "s3_bucket" {
