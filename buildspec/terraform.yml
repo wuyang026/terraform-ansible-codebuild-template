@@ -36,7 +36,7 @@ phases:
 
   post_build:
     commands:
-      - cd $TERRAFORM_WORKDIR
+      - cd terraform/ec2
       - terraform output -json > terraform-outputs.json || echo "{}" > terraform-outputs.json
       - aws s3 cp terraform-outputs.json s3://$S3_BUCKET/terraform-outputs.json --region $AWS_REGION
       - aws s3 cp ../../ansible/outputs.json s3://$S3_BUCKET/ansible-outputs.json --region $AWS_REGION
