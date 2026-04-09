@@ -1,0 +1,26 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo Installing dependencies...
+      - apt-get update
+      - apt-get install -y terraform ansible python3
+  pre_build:
+    commands:
+      - echo Pre-build phase...
+      - cd ec2
+      - terraform init
+      - terraform validate
+  build:
+    commands:
+      - echo Build phase...
+      - terraform plan -out=tfplan
+      - terraform apply -auto-approve tfplan
+      - terraform output -json > ../ansible/outputs.json
+      - cd ../ansible
+      - python3 generate_inventory.py
+      - ansible-playbook -i inventory/hosts playbooks/main.yml
+  post_build:
+    commands:
+      - echo Post-build phase...

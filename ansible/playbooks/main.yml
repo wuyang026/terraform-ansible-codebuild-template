@@ -1,0 +1,25 @@
+---
+- name: DBサーバーの設定
+  hosts: dbservers
+  become: yes
+  tasks:
+    - name: MySQLのインストール
+      apt:
+        name: mysql-server
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: MySQLサービスの開始
+      service:
+        name: mysql
+        state: started
+        enabled: yes
+
+    - name: MySQLのセキュアインストール
+      mysql_secure_installation:
+        login_password: ''
+        root_password: 'new_root_password'
+        remove_anonymous_users: yes
+        disallow_root_login_remotely: yes
+        remove_test_db: yes
+      when: ansible_os_family == "Debian"
