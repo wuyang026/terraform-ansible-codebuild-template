@@ -8,8 +8,10 @@ phases:
   install:
     commands:
       - yum update -y --allowerasing
-      - yum install -y python3 python3-pip ansible session-manager-plugin --allowerasing
+      - yum install -y python3 python3-pip ansible --allowerasing
       - sudo pip3.9 install boto3 botocore
+      - curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" -o /tmp/session-manager-plugin.rpm
+      - yum install -y /tmp/session-manager-plugin.rpm
       - ansible-galaxy collection install amazon.aws
       - ansible --version
       - python3 --version
