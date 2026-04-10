@@ -1,23 +1,36 @@
-- name: OS config (RHEL only)
-  hosts: dbservers
-  become: yes
-  gather_facts: yes
+- name: Disable SELinux persistently
+  ansible.posix.selinux:
+    policy: targeted
+    state: disabled
+  when: ansible_os_family == "RedHat"
+  register: selinux_config
 
-  tasks:
-    - name: Disable SELinux
-      ansible.posix.selinux:
-        state: disabled
-      when: ansible_os_family == "RedHat"
+- name: Set SELinux to permissive until reboot
+  ansible.builtin.command: setenforce 0
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_selinux is defined
+    - ansible_selinux.status == "enabled"
+    - ansible_selinux.mode == "enforcing"
+  changed_when: true
 
-    - name: Disable firewalld
-      ansible.builtin.systemd:
-        name: firewalld
-        state: stopped
-        enabled: no
-      when: ansible_os_family == "RedHat"
+- name: Reboot after SELinux change
+  ansible.builtin.reboot:
+    reboot_timeout: 900
+    test_command: sestatus
+  when:
+    - ansible_os_family == "RedHat"
+    - selinux_config is changed
 
-    - name: Ensure SSM agent running
-      ansible.builtin.service:
-        name: amazon-ssm-agent
-        state: started
-        enabled: yes
+- name: Disable firewalld
+  ansible.builtin.systemd:
+    name: firewalld
+    state: stopped
+    enabled: no
+  when: ansible_os_family == "RedHat"
+
+- name: Ensure SSM agent running
+  ansible.builtin.service:
+    name: amazon-ssm-agent
+    state: started
+    enabled: yes

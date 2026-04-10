@@ -5,6 +5,16 @@
   tasks:
     - name: test connection
       raw: echo "SSM connected"
+      changed_when: false
 
     - name: python check
       raw: python3 --version || echo "no python3"
+      changed_when: false
+
+- name: Apply common OS settings
+  hosts: dbservers
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - common
