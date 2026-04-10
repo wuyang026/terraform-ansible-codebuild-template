@@ -1,13 +1,10 @@
 import json
 import boto3
 import os
-import sys
 
 S3_BUCKET = os.environ.get("S3_BUCKET", "go-s3-bucket-test")
 S3_KEY = os.environ.get("S3_KEY", "ansible-outputs.json")
 AWS_REGION = os.environ.get("AWS_REGION", "ap-south-1")
-
-ANSIBLE_CONNECTION = "community.aws.aws_ssm"
 
 def download_from_s3(bucket, key, dest, region):
     s3 = boto3.client("s3", region_name=region)
@@ -22,13 +19,7 @@ with open("inventory/hosts", "w") as f:
     f.write("[dbservers]\n")
 
     def write_instance(name, inst):
-        f.write(
-            f"{name} "
-            f"ansible_host={inst['id']} "
-            f"ansible_connection={ANSIBLE_CONNECTION} "
-            f"ansible_aws_ssm_region={AWS_REGION} "
-            f"ansible_aws_ssm_timeout=120\n"
-        )
+        f.write(f"{name} ansible_host={inst['id']} ansible_connection=aws_ssm\n")
 
     for name, inst in data["primary_instances"]["value"].items():
         write_instance(name, inst)
