@@ -117,11 +117,6 @@ exec > >(tee -a $LOG_FILE) 2>&1
 
 echo "===== USER DATA START ====="
 
-dnf install -y python3 curl unzip
-
-python3 -m ensurepip || true
-python3 -m pip install --upgrade pip || true
-python3 -m pip install boto3 || true
 
 echo "SSM Agent install..."
 
