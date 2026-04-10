@@ -19,8 +19,12 @@ phases:
       - curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" -o /tmp/plugin.rpm
       - yum install -y /tmp/plugin.rpm
 
-      # Ansible collections
-      - ansible-galaxy collection install amazon.aws community.aws
+      # aws_ssm の古い collection は bracketed paste の制御文字を除去できず、
+      # remote_tmp 解決が壊れるため CodeBuild で明示的に上書きする
+      - ansible-galaxy collection install amazon.aws:==10.3.0 community.aws:==10.1.0 --force
+      - ansible-galaxy collection list | egrep 'amazon\.aws|community\.aws'
+
+      - mkdir -p /tmp/.ansible/localtmp
 
       # ansible.cfg
       - |
@@ -39,11 +43,15 @@ phases:
     commands:
       - cd ansible
       - export ANSIBLE_CONFIG=../ansible.cfg
+      - export ANSIBLE_REMOTE_TEMP=/tmp/.ansible/tmp
+      - export ANSIBLE_REMOTE_TMP=/tmp/.ansible/tmp
+      - export ANSIBLE_LOCAL_TEMP=/tmp/.ansible/localtmp
       - export AWS_REGION=${AWS_REGION:-ap-south-1}
       - export AWS_DEFAULT_REGION=${AWS_REGION:-ap-south-1}
 
       - /usr/bin/python3.9 generate_inventory.py
 
+      - /usr/bin/python3.9 /usr/bin/ansible-config dump --only-changed
       - /usr/bin/python3.9 /usr/bin/ansible-inventory -i inventory/hosts --list
 
       - /usr/bin/python3.9 /usr/bin/ansible-playbook -i inventory/hosts playbooks/main.yml -vvvv
