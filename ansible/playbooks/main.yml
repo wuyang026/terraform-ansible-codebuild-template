@@ -11,12 +11,10 @@
           - python3-pip
         state: present
 
-    - name: Install boto3 and botocore via pip3.9
-      pip:
-        name:
-          - boto3
-          - botocore
-        executable: /usr/bin/pip3.9
+    - name: Install boto3 and botocore using pip3.9
+      command: /usr/bin/pip3.9 install boto3 botocore
+      args:
+        creates: /usr/lib/python3.9/site-packages/boto3
 
 - name: Common services for all servers
   hosts: dbservers
