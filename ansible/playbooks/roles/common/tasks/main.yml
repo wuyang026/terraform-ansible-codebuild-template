@@ -1,20 +1,5 @@
 ---
 # 共通サービス: すべてのサーバーに適用
-- name: Gather facts
-  setup:
-
-- name: Install Python pip for RHEL 9
-  yum:
-    name: python3-pip
-    state: present
-  when: ansible_os_family == "RedHat"
-
-- name: Install boto3 library
-  pip:
-    name: boto3
-    executable: pip3
-  when: ansible_os_family == "RedHat"
-
 - name: Disable SELinux immediately for RHEL 9
   ansible.posix.selinux:
     policy: targeted

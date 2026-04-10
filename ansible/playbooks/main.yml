@@ -3,6 +3,22 @@
   hosts: dbservers
   become: yes
   gather_facts: false
+  pre_tasks:
+    - name: Update system packages for RHEL 9
+      yum:
+        name: '*'
+        state: latest
+    - name: Install Python pip for RHEL 9
+      yum:
+        name: python3-pip
+        state: present
+    - name: Install boto3 library
+      pip:
+        name: boto3
+        executable: pip3
+  tasks:
+    - name: Gather facts
+      setup:
   roles:
     - common
 
