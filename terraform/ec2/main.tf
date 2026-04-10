@@ -1,5 +1,5 @@
 ############################################
-# EC2用 IAM ロール（SSM接続用）
+# IAMロール（SSM接続用）
 ############################################
 resource "aws_iam_role" "ec2_role" {
   name = "ec2-ssm-role"
@@ -17,40 +17,40 @@ resource "aws_iam_role" "ec2_role" {
   })
 }
 
-# SSM接続に必須のポリシー
+############################################
+# SSMフルマネージドアクセス権限
+############################################
 resource "aws_iam_role_policy_attachment" "ssm" {
   role       = aws_iam_role.ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-# S3アクセス（Ansible + SSM連携で使用）
+############################################
+# S3アクセス権限（必要に応じて利用）
+############################################
 resource "aws_iam_role_policy_attachment" "s3" {
   role       = aws_iam_role.ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
 }
 
-# EC2にアタッチするインスタンスプロファイル
+############################################
+# EC2インスタンスプロファイル
+############################################
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = "ec2-ssm-profile"
   role = aws_iam_role.ec2_role.name
 }
 
 ############################################
-# セキュリティグループ（SSM利用前提）
+# セキュリティグループ（SSM専用構成）
 ############################################
 resource "aws_security_group" "db_sg" {
   name_prefix = "db-sg-"
   vpc_id      = var.vpc_id
 
-  # SSM通信（HTTPS）のみ許可
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # DBポート（必要に応じて制限することを推奨）
+  ##########################################
+  # DBポート（必要な場合のみ公開）
+  ##########################################
   ingress {
     from_port   = var.db_port
     to_port     = var.db_port
@@ -58,7 +58,14 @@ resource "aws_security_group" "db_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # アウトバウンド通信はすべて許可
+  ##########################################
+  # 注意：
+  # SSH(22)は完全に無効化（SSMのみ使用）
+  ##########################################
+
+  ##########################################
+  # アウトバウンド通信（全許可）
+  ##########################################
   egress {
     from_port   = 0
     to_port     = 0
@@ -67,50 +74,60 @@ resource "aws_security_group" "db_sg" {
   }
 
   tags = {
-    Name = "DB-SecurityGroup"
+    Name = "DB-SG-SSM-ONLY"
   }
 }
 
 ############################################
-# EC2 初期化スクリプト（非常に重要）
+# ユーザーデータ（初期設定）
 ############################################
 locals {
   user_data = <<-EOF
     #!/bin/bash
     set -xe
 
-    # ログ出力先
+    ########################################
+    # ログ出力設定
+    ########################################
     LOG_FILE="/var/log/user-data.log"
     exec > >(tee -a $LOG_FILE) 2>&1
 
-    echo "===== START user_data ====="
+    echo "===== ユーザーデータ開始 ====="
 
-    # Python3 インストール
-    yum install -y python3
+    ########################################
+    # 基本ツールインストール
+    ########################################
+    if command -v dnf >/dev/null 2>&1; then
+      dnf install -y python3 curl unzip
+    else
+      yum install -y python3 curl unzip
+    fi
 
-    # pip 初期化
+    ########################################
+    # pip設定 & boto3インストール
+    ########################################
     python3 -m ensurepip || true
-
-    # pip アップグレード
     python3 -m pip install --upgrade pip
-
-    # boto3 インストール（Ansible SSMに必須）
     python3 -m pip install boto3
 
-    # 動作確認
-    python3 --version
-    python3 -m pip list | grep boto3
+    ########################################
+    # SSM Agent インストール（重要）
+    ########################################
+    echo "SSM Agent インストール開始..."
 
-    # SSM Agent の起動確認
+    yum install -y https://s3.${var.region}.amazonaws.com/amazon-ssm-${var.region}/latest/linux_amd64/amazon-ssm-agent.rpm
+
     systemctl enable amazon-ssm-agent
     systemctl restart amazon-ssm-agent
 
-    echo "===== END user_data ====="
+    systemctl status amazon-ssm-agent || true
+
+    echo "===== ユーザーデータ終了 ====="
   EOF
 }
 
 ############################################
-# Primary ノード
+# Primary EC2
 ############################################
 resource "aws_instance" "primary" {
   count                  = var.primary_count
@@ -118,19 +135,25 @@ resource "aws_instance" "primary" {
   instance_type          = var.instance_type
 
   # AZ分散配置
-  subnet_id              = element([var.subnet_1a_id, var.subnet_1b_id, var.subnet_1c_id], count.index % 3)
+  subnet_id = element(
+    [var.subnet_1a_id, var.subnet_1b_id, var.subnet_1c_id],
+    count.index % 3
+  )
 
   vpc_security_group_ids = [aws_security_group.db_sg.id]
-  iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
 
-  # 初期設定スクリプト
+  # IAMロール付与（SSM用）
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
+
   user_data = local.user_data
 
-  # 追加EBSボリューム
+  ##########################################
+  # EBS追加ディスク
+  ##########################################
   ebs_block_device {
     device_name = "/dev/sdh"
     volume_size = 10
-    volume_type = "gp2"
+    volume_type = "gp3"
   }
 
   tags = {
@@ -140,24 +163,28 @@ resource "aws_instance" "primary" {
 }
 
 ############################################
-# Standby ノード
+# Standby EC2
 ############################################
 resource "aws_instance" "standby" {
   count                  = var.standby_count
   ami                    = var.ami_id
   instance_type          = var.instance_type
 
-  subnet_id              = element([var.subnet_1a_id, var.subnet_1b_id, var.subnet_1c_id], count.index % 3)
+  subnet_id = element(
+    [var.subnet_1a_id, var.subnet_1b_id, var.subnet_1c_id],
+    count.index % 3
+  )
 
   vpc_security_group_ids = [aws_security_group.db_sg.id]
-  iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
+
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
 
   user_data = local.user_data
 
   ebs_block_device {
     device_name = "/dev/sdh"
     volume_size = 10
-    volume_type = "gp2"
+    volume_type = "gp3"
   }
 
   tags = {
@@ -167,8 +194,10 @@ resource "aws_instance" "standby" {
 }
 
 ############################################
-# SSM用 VPCエンドポイント（プライベート接続）
+# SSM VPCエンドポイント（必須）
 ############################################
+
+# SSM本体
 resource "aws_vpc_endpoint" "ssm" {
   vpc_id              = var.vpc_id
   service_name        = "com.amazonaws.${var.region}.ssm"
@@ -178,6 +207,7 @@ resource "aws_vpc_endpoint" "ssm" {
   private_dns_enabled = true
 }
 
+# SSMメッセージ通信
 resource "aws_vpc_endpoint" "ssm_messages" {
   vpc_id              = var.vpc_id
   service_name        = "com.amazonaws.${var.region}.ssmmessages"
@@ -187,6 +217,7 @@ resource "aws_vpc_endpoint" "ssm_messages" {
   private_dns_enabled = true
 }
 
+# EC2メッセージ通信
 resource "aws_vpc_endpoint" "ec2_messages" {
   vpc_id              = var.vpc_id
   service_name        = "com.amazonaws.${var.region}.ec2messages"
