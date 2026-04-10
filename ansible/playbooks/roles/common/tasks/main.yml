@@ -1,28 +1,23 @@
----
-# ==========================================
-# 共通設定（すべてのサーバーに適用）
-# ※ここでは「taskのみ」記述すること！
-# ==========================================
+- name: OS config (RHEL only)
+  hosts: dbservers
+  become: yes
+  gather_facts: yes
 
-# SELinuxを無効化（RHEL系のみ）
-- name: Disable SELinux
-  ansible.posix.selinux:
-    policy: targeted
-    state: disabled
-    immediate: yes
-  when: ansible_os_family == "RedHat"
+  tasks:
+    - name: Disable SELinux
+      ansible.posix.selinux:
+        state: disabled
+      when: ansible_os_family == "RedHat"
 
-# firewalldを停止
-- name: Disable firewalld
-  ansible.builtin.systemd:
-    name: firewalld
-    state: stopped
-    enabled: no
-  when: ansible_os_family == "RedHat"
+    - name: Disable firewalld
+      ansible.builtin.systemd:
+        name: firewalld
+        state: stopped
+        enabled: no
+      when: ansible_os_family == "RedHat"
 
-# SSM Agentを起動・有効化
-- name: Ensure SSM Agent is running
-  ansible.builtin.service:
-    name: amazon-ssm-agent
-    state: started
-    enabled: yes
+    - name: Ensure SSM agent running
+      ansible.builtin.service:
+        name: amazon-ssm-agent
+        state: started
+        enabled: yes

@@ -1,36 +1,10 @@
----
-# ==============================
-# Play 1: 接続確認（rawのみ）
-# ==============================
-- name: SSM 接続確認
+- name: SSM base test
   hosts: dbservers
   gather_facts: no
 
   tasks:
-    - name: echo test
-      raw: "echo SSM connected"
-      register: result
+    - name: test connection
+      raw: echo "SSM connected"
 
-    - debug:
-        var: result.stdout
-
-
-# ==============================
-# Play 2: 通常処理（ここからPython使う）
-# ==============================
-- name: メイン処理
-  hosts: dbservers
-  become: yes
-
-  tasks:
-    - name: Python3 インストール（必要なら）
-      raw: |
-        command -v python3 || yum install -y python3
-
-    - name: boto3 インストール
-      pip:
-        name: boto3
-        executable: pip3
-
-    - name: 動作確認
-      command: python3 --version
+    - name: python check
+      raw: python3 --version || echo "no python3"
