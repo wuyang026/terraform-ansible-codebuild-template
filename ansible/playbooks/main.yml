@@ -24,11 +24,38 @@
 # ==========================================
 - name: Common configuration
   hosts: dbservers
-  become: yes
-  gather_facts: yes
+  ---
+  # ==============================
+  # Play 1: 接続確認（rawのみ）
+  # ==============================
+  - name: SSM 接続確認
+    hosts: dbservers
+    gather_facts: no
 
-  vars:
-    ansible_python_interpreter: /usr/bin/python3.9
+    tasks:
+      - name: echo test
+        raw: "echo SSM connected"
+        register: result
 
-  roles:
-    - common
+      - debug:
+          var: result.stdout
+
+  # ==============================
+  # Play 2: 通常処理（ここからPython使う）
+  # ==============================
+  - name: メイン処理
+    hosts: dbservers
+    become: yes
+
+    tasks:
+      - name: Python3 インストール（必要なら）
+        raw: |
+          command -v python3 || yum install -y python3
+
+      - name: boto3 インストール
+        pip:
+          name: boto3
+          executable: pip3
+
+      - name: 動作確認
+        command: python3 --version

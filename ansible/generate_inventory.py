@@ -2,19 +2,17 @@
 
 import json
 import sys
-import boto3
-import os
+import json
 
-# ==========================================
-# 環境変数取得
-# ==========================================
-S3_BUCKET = os.environ.get("S3_BUCKET", "go-s3-bucket-test")
-S3_KEY = os.environ.get("S3_KEY", "terraform-outputs.json")
-AWS_REGION = os.environ.get("AWS_REGION", "ap-south-1")
+with open("outputs.json") as f:
+    data = json.load(f)
 
-# ==========================================
-# S3からTerraform出力を取得
-# ==========================================
+with open("inventory/hosts", "w") as f:
+    f.write("[dbservers]\n")
+    for name, inst in data["primary_instances"]["value"].items():
+        f.write(f"{name} ansible_host={inst['id']} ansible_connection=aws_ssm\n")
+    for name, inst in data["standby_instances"]["value"].items():
+        f.write(f"{name} ansible_host={inst['id']} ansible_connection=aws_ssm\n")
 def download_from_s3(bucket, key, dest, region):
     s3 = boto3.client('s3', region_name=region)
     try:
