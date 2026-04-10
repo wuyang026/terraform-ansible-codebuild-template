@@ -38,7 +38,12 @@ phases:
     commands:
       - cd ansible
       - python3 generate_inventory.py
-      - ansible-playbook -i inventory/hosts playbooks/main.yml
+      - echo "===== generated inventory ====="
+      - cat inventory/hosts
+      - echo "===== inventory JSON ====="
+      - ansible-inventory -i inventory/hosts --list
+      - echo "===== running ansible ====="
+      - ansible-playbook -i inventory/hosts playbooks/main.yml -vvv
 
   post_build:
     commands:
