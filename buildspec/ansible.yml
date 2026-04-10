@@ -18,7 +18,7 @@ phases:
 
       # ----------------------------------
       # AWS SDK（CodeBuild側用）
-      # ※EC2には関係なし
+      # ※SSM接続で必須（ここ超重要）
       # ----------------------------------
       - pip3 install boto3 botocore
 
@@ -28,6 +28,7 @@ phases:
       - curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" -o /tmp/session-manager-plugin.rpm
       - yum install -y /tmp/session-manager-plugin.rpm
 
+      # 確認
       - echo "===== session-manager-plugin 確認 ====="
       - which session-manager-plugin
 
@@ -43,14 +44,18 @@ phases:
       - python3 --version
 
       # ----------------------------------
-      # ansible.cfg 作成
+      # ansible.cfg 作成（超重要）
+      # Pythonバージョンを統一する
       # ----------------------------------
       - |
         cat > ansible.cfg << 'EOF'
         [defaults]
         inventory = inventory/hosts
         roles_path = playbooks/roles
-        interpreter_python = /usr/bin/python3.9
+
+        # ★重要：python3（CodeBuildと同じ環境）を使用
+        interpreter_python = /usr/bin/python3
+
         host_key_checking = False
         stdout_callback = yaml
         timeout = 60
@@ -63,9 +68,12 @@ phases:
     commands:
       - echo "===== pre_build フェーズ ====="
 
-      # Terraform出力取得
+      # ----------------------------------
+      # Terraform出力をS3から取得
+      # ----------------------------------
       - aws s3 cp s3://$S3_BUCKET/ansible-outputs.json ansible/outputs.json --region $AWS_REGION
 
+      # 確認
       - echo "===== outputs.json 確認 ====="
       - cat ansible/outputs.json
 
@@ -73,20 +81,31 @@ phases:
     commands:
       - echo "===== build フェーズ ====="
 
+      # ----------------------------------
+      # 作業ディレクトリへ移動
+      # ----------------------------------
       - cd ansible
 
-      # ansible.cfg 有効化
+      # ----------------------------------
+      # ansible.cfg を有効化
+      # ----------------------------------
       - export ANSIBLE_CONFIG=../ansible.cfg
 
-      # inventory生成
+      # ----------------------------------
+      # inventory生成（S3 → hosts）
+      # ----------------------------------
       - python3 generate_inventory.py
 
-      # 環境変数（SSM用）
+      # ----------------------------------
+      # SSM接続用環境変数
+      # ----------------------------------
       - export ANSIBLE_AWS_SSM_S3_BUCKET=$S3_BUCKET
       - export ANSIBLE_AWS_SSM_REGION=$AWS_REGION
       - export AWS_DEFAULT_REGION=$AWS_REGION
 
-      # inventory確認
+      # ----------------------------------
+      # inventory確認（デバッグ）
+      # ----------------------------------
       - echo "===== inventory 内容 ====="
       - cat inventory/hosts
 
@@ -94,12 +113,13 @@ phases:
       - ansible-inventory -i inventory/hosts --list
 
       # ----------------------------------
-      # ❌ SSM pingテストは削除（重要）
-      # 理由：boto3未インストールで必ず失敗するため
+      # ❌ pingテストは実行しない
+      # 理由：
+      # 初回はboto3がEC2に無く失敗するため
       # ----------------------------------
 
       # ----------------------------------
-      # Playbook実行（ここでboto3が入る）
+      # Playbook実行
       # ----------------------------------
       - echo "===== Ansible 実行 ====="
       - ansible-playbook -i inventory/hosts playbooks/main.yml -vvvv
