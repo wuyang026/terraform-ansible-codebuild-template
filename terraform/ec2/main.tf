@@ -133,16 +133,21 @@ locals {
 #!/bin/bash
 set -euxo pipefail
 
-echo "SSMエージェントをインストール中..."
+URL="https://s3.ap-south-1.amazonaws.com/amazon-ssm-ap-south-1/latest/linux_amd64/amazon-ssm-agent.rpm"
+FILE="/tmp/amazon-ssm-agent.rpm"
 
-dnf clean all || true
+echo "Downloading SSM agent..."
+curl -fL --retry 3 --retry-delay 2 -o "$FILE" "$URL"
 
-dnf install -y https://s3.${var.region}.amazonaws.com/amazon-ssm-${var.region}/latest/linux_amd64/amazon-ssm-agent.rpm
+echo "Verifying file..."
+test -s "$FILE"
 
+echo "Installing RPM..."
+rpm -Uvh "$FILE"
+
+echo "Enabling service..."
 systemctl enable amazon-ssm-agent
-systemctl restart amazon-ssm-agent
-
-systemctl status amazon-ssm-agent || true
+systemctl start amazon-ssm-agent
 EOF
 }
 
