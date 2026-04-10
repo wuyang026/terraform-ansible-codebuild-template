@@ -16,3 +16,4 @@ with open('inventory/hosts', 'w') as f:
     for key, instance in outputs['standby_instances']['value'].items():
         f.write(f'{key} ansible_host={instance["id"]} ansible_connection=aws_ssm ansible_aws_ssm_region=ap-south-1\n')
     f.write('\n[dbservers:vars]\n')
+    f.write('ansible_python_interpreter=/usr/bin/python3.9\n')
