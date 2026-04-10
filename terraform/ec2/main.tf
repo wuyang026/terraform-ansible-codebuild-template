@@ -68,6 +68,12 @@ resource "aws_instance" "primary" {
   vpc_security_group_ids = [aws_security_group.db_sg.id]
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
 
+  user_data = <<-EOF
+    #!/bin/bash
+    yum install -y python3 python3-pip
+    pip3 install boto3
+  EOF
+
   ebs_block_device {
     device_name = "/dev/sdh"
     volume_size = 10
@@ -87,6 +93,12 @@ resource "aws_instance" "standby" {
   subnet_id              = element([var.subnet_1a_id, var.subnet_1b_id, var.subnet_1c_id], count.index % 3)
   vpc_security_group_ids = [aws_security_group.db_sg.id]
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
+
+  user_data = <<-EOF
+    #!/bin/bash
+    yum install -y python3 python3-pip
+    pip3 install boto3
+  EOF
 
   ebs_block_device {
     device_name = "/dev/sdh"
