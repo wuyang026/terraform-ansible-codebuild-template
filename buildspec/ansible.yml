@@ -18,6 +18,7 @@ phases:
         [defaults]
         inventory = inventory/hosts
         roles_path = playbooks/roles
+        interpreter_python = /usr/bin/python3.9
         host_key_checking = False
 
         [inventory]
