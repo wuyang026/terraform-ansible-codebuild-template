@@ -2,6 +2,7 @@
 - name: Common services for all servers
   hosts: dbservers
   become: yes
+  gather_facts: false
   roles:
     - common
 
