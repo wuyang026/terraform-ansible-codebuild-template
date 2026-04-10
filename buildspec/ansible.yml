@@ -9,7 +9,7 @@ phases:
     commands:
       - yum update -y --allowerasing
       - yum install -y python3 python3-pip ansible --allowerasing
-      - pip3 install boto3 botocore
+      - sudo pip3.9 install boto3 botocore
       - ansible-galaxy collection install amazon.aws
       - ansible --version
       - python3 --version

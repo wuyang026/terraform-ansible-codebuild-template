@@ -4,13 +4,19 @@
   become: yes
   gather_facts: false
   tasks:
-    - name: Ensure Python 3 and Boto3 are installed on the remote host
+    - name: Ensure Python 3 and pip are installed on the remote host
       yum:
         name:
           - python3
           - python3-pip
-          - python3-boto3
         state: present
+
+    - name: Install boto3 and botocore via pip3.9
+      pip:
+        name:
+          - boto3
+          - botocore
+        executable: /usr/bin/pip3.9
 
 - name: Common services for all servers
   hosts: dbservers
