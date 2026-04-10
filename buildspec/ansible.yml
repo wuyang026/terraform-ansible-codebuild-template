@@ -40,6 +40,7 @@ phases:
     commands:
       - cd ansible
       - export ANSIBLE_CONFIG=../ansible.cfg
+      - export AWS_REGION=${AWS_REGION:-ap-south-1}
       - export AWS_DEFAULT_REGION=${AWS_REGION:-ap-south-1}
 
       - python3 generate_inventory.py

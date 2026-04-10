@@ -26,3 +26,11 @@ with open("inventory/hosts", "w") as f:
 
     for name, inst in data["standby_instances"]["value"].items():
         write_instance(name, inst)
+
+    f.write("\n[dbservers:vars]\n")
+    f.write("ansible_connection=aws_ssm\n")
+    f.write(f"ansible_aws_ssm_bucket_name={S3_BUCKET}\n")
+    f.write(f"ansible_aws_ssm_region={AWS_REGION}\n")
+    f.write("ansible_aws_ssm_timeout=120\n")
+    f.write("ansible_aws_ssm_s3_addressing_style=virtual\n")
+    f.write("ansible_python_interpreter=/usr/bin/python3\n")
