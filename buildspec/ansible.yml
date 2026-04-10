@@ -37,19 +37,6 @@ phases:
   build:
     commands:
       - cd ansible
-      - cat > ansible.cfg << EOF
-        [defaults]
-        inventory = inventory/hosts
-        roles_path = playbooks/roles
-        interpreter_python = /usr/bin/python3.9
-        host_key_checking = False
-
-        [inventory]
-        enable_plugins = aws_ec2, host_list, script, yaml, ini, auto
-
-        [ssh_connection]
-        ssh_args = -o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no
-        EOF
       - python3 generate_inventory.py
       - echo "===== generated inventory ====="
       - cat inventory/hosts
