@@ -11,10 +11,8 @@
           - python3-pip
         state: present
 
-    - name: Install boto3 and botocore using pip3.9
-      command: /usr/bin/pip3.9 install boto3 botocore
-      args:
-        creates: /usr/lib/python3.9/site-packages/boto3
+    - name: Install boto3 and botocore using the remote Python interpreter
+      command: "{{ ansible_python_interpreter }} -m pip install boto3 botocore"
 
 - name: Common services for all servers
   hosts: dbservers
