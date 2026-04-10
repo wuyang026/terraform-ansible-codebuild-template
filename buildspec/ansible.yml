@@ -12,7 +12,8 @@ phases:
       - yum update -y --allowerasing
       - yum install -y python3 python3-pip ansible awscli unzip curl --allowerasing
 
-      - python3 -m pip install boto3 botocore
+      - /usr/bin/python3.9 -m pip install boto3 botocore
+      - /usr/bin/python3.9 -c "import boto3, botocore"
 
       # SSM plugin
       - curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" -o /tmp/plugin.rpm
@@ -39,11 +40,11 @@ phases:
       - export AWS_REGION=${AWS_REGION:-ap-south-1}
       - export AWS_DEFAULT_REGION=${AWS_REGION:-ap-south-1}
 
-      - python3 generate_inventory.py
+      - /usr/bin/python3.9 generate_inventory.py
 
-      - ansible-inventory -i inventory/hosts --list
+      - /usr/bin/python3.9 /usr/bin/ansible-inventory -i inventory/hosts --list
 
-      - ansible-playbook -i inventory/hosts playbooks/main.yml -vvvv
+      - /usr/bin/python3.9 /usr/bin/ansible-playbook -i inventory/hosts playbooks/main.yml -vvvv
 
   post_build:
     commands:
