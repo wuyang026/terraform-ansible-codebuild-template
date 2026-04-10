@@ -2,7 +2,7 @@ version: 0.2
 
 env:
   variables:
-    # SSM用S3バケット
+    # SSM経由で使用するS3バケット
     S3_BUCKET: "go-s3-bucket-test"
 
 phases:
@@ -10,28 +10,41 @@ phases:
     commands:
       - echo "===== install フェーズ ====="
 
-      # 基本パッケージ
+      # ----------------------------------
+      # 基本パッケージのインストール
+      # ----------------------------------
       - yum update -y --allowerasing
       - yum install -y python3 python3-pip ansible awscli unzip curl --allowerasing
 
-      # AWS SDK
+      # ----------------------------------
+      # AWS SDK（Ansible AWSモジュール用）
+      # ----------------------------------
       - pip3 install boto3 botocore
 
-      # SSMプラグイン
+      # ----------------------------------
+      # SSM Session Manager Plugin
+      # ----------------------------------
       - curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" -o /tmp/session-manager-plugin.rpm
       - yum install -y /tmp/session-manager-plugin.rpm
 
       # 確認
+      - echo "===== session-manager-plugin 確認 ====="
       - which session-manager-plugin
 
+      # ----------------------------------
       # Ansible AWSコレクション
+      # ----------------------------------
       - ansible-galaxy collection install amazon.aws community.aws
 
+      # ----------------------------------
       # バージョン確認
+      # ----------------------------------
       - ansible --version
       - python3 --version
 
-      # ansible.cfg生成
+      # ----------------------------------
+      # ansible.cfg 作成
+      # ----------------------------------
       - |
         cat > ansible.cfg << 'EOF'
         [defaults]
@@ -40,6 +53,7 @@ phases:
         interpreter_python = /usr/bin/python3
         host_key_checking = False
         stdout_callback = yaml
+        timeout = 60
 
         [inventory]
         enable_plugins = host_list, script, yaml, ini, auto
@@ -49,32 +63,66 @@ phases:
     commands:
       - echo "===== pre_build フェーズ ====="
 
-      # Terraform出力取得
+      # ----------------------------------
+      # Terraform出力をS3から取得
+      # ----------------------------------
       - aws s3 cp s3://$S3_BUCKET/ansible-outputs.json ansible/outputs.json --region $AWS_REGION
+
+      # 確認
+      - echo "===== outputs.json 確認 ====="
+      - cat ansible/outputs.json
 
   build:
     commands:
       - echo "===== build フェーズ ====="
 
+      # ----------------------------------
+      # 作業ディレクトリ変更
+      # ----------------------------------
       - cd ansible
 
-      # inventory生成
+      # ----------------------------------
+      # ★重要：ansible.cfg を有効化
+      # ----------------------------------
+      - export ANSIBLE_CONFIG=../ansible.cfg
+
+      # ----------------------------------
+      # inventory生成（S3データ → hosts）
+      # ----------------------------------
       - python3 generate_inventory.py
 
-      # 環境変数設定
+      # ----------------------------------
+      # 環境変数（SSM接続用）
+      # ----------------------------------
       - export ANSIBLE_AWS_SSM_S3_BUCKET=$S3_BUCKET
       - export ANSIBLE_AWS_SSM_REGION=$AWS_REGION
       - export AWS_DEFAULT_REGION=$AWS_REGION
 
-      # 接続テスト
-      - ansible dbservers -m ping -vvvv
+      # ----------------------------------
+      # inventory確認（超重要）
+      # ----------------------------------
+      - echo "===== inventory 内容 ====="
+      - cat inventory/hosts
 
-      # playbook実行
-      - ansible-playbook playbooks/main.yml -vvvv
+      - echo "===== inventory JSON ====="
+      - ansible-inventory -i inventory/hosts --list
+
+      # ----------------------------------
+      # SSM接続テスト
+      # ----------------------------------
+      - echo "===== SSM接続テスト ====="
+      - ansible dbservers -i inventory/hosts -m ping -vvvv
+
+      # ----------------------------------
+      # Playbook実行
+      # ----------------------------------
+      - echo "===== Ansible 実行 ====="
+      - ansible-playbook -i inventory/hosts playbooks/main.yml -vvvv
 
   post_build:
     commands:
       - echo "===== 完了 ====="
+      - echo "Ansible 実行成功"
 
 artifacts:
   files:
