@@ -1,61 +1,36 @@
 ---
-# ==========================================
-# Play 1: Python + boto3 ブートストラップ
-# （SSM接続のため必須）
-# ==========================================
-- name: Bootstrap Python and boto3
+# ==============================
+# Play 1: 接続確認（rawのみ）
+# ==============================
+- name: SSM 接続確認
   hosts: dbservers
   gather_facts: no
 
   tasks:
-    # Python3が無い場合インストール
-    - name: Ensure python3 exists
+    - name: echo test
+      raw: "echo SSM connected"
+      register: result
+
+    - debug:
+        var: result.stdout
+
+
+# ==============================
+# Play 2: 通常処理（ここからPython使う）
+# ==============================
+- name: メイン処理
+  hosts: dbservers
+  become: yes
+
+  tasks:
+    - name: Python3 インストール（必要なら）
       raw: |
         command -v python3 || yum install -y python3
 
-    # boto3を「system python」にインストール
-    - name: Install boto3 for system python
-      raw: |
-        /usr/bin/python3.9 -m ensurepip || true
-        /usr/bin/python3.9 -m pip install boto3 botocore
+    - name: boto3 インストール
+      pip:
+        name: boto3
+        executable: pip3
 
-# ==========================================
-# Play 2: 共通設定
-# ==========================================
-- name: Common configuration
-  hosts: dbservers
-  ---
-  # ==============================
-  # Play 1: 接続確認（rawのみ）
-  # ==============================
-  - name: SSM 接続確認
-    hosts: dbservers
-    gather_facts: no
-
-    tasks:
-      - name: echo test
-        raw: "echo SSM connected"
-        register: result
-
-      - debug:
-          var: result.stdout
-
-  # ==============================
-  # Play 2: 通常処理（ここからPython使う）
-  # ==============================
-  - name: メイン処理
-    hosts: dbservers
-    become: yes
-
-    tasks:
-      - name: Python3 インストール（必要なら）
-        raw: |
-          command -v python3 || yum install -y python3
-
-      - name: boto3 インストール
-        pip:
-          name: boto3
-          executable: pip3
-
-      - name: 動作確認
-        command: python3 --version
+    - name: 動作確認
+      command: python3 --version

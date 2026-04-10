@@ -2,133 +2,52 @@ version: 0.2
 
 env:
   variables:
-    # SSM経由で使用するS3バケット
     S3_BUCKET: "go-s3-bucket-test"
 
 phases:
   install:
     commands:
-      - echo "===== install フェーズ ====="
+      - echo "===== install ====="
 
-      # ----------------------------------
-      # 基本パッケージのインストール
-      # ----------------------------------
       - yum update -y --allowerasing
       - yum install -y python3 python3-pip ansible awscli unzip curl --allowerasing
 
-      # ----------------------------------
-      # AWS SDK（CodeBuild側用）
-      # ※SSM接続で必須（ここ超重要）
-      # ----------------------------------
-      - python3.9 -m pip install boto3 botocore
+      # ★统一 python3
+      - python3 -m pip install boto3 botocore
 
-      # ----------------------------------
-      # SSM Session Manager Plugin
-      # ----------------------------------
-      - curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" -o /tmp/session-manager-plugin.rpm
-      - yum install -y /tmp/session-manager-plugin.rpm
+      # SSM plugin
+      - curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" -o /tmp/plugin.rpm
+      - yum install -y /tmp/plugin.rpm
 
-      # 確認
-      - echo "===== session-manager-plugin 確認 ====="
-      - which session-manager-plugin
-
-      # ----------------------------------
-      # Ansible AWSコレクション
-      # ----------------------------------
+      # Ansible collections
       - ansible-galaxy collection install amazon.aws community.aws
 
-      # ----------------------------------
-      # バージョン確認
-      # ----------------------------------
-      - ansible --version
-      - python3 --version
-
-      # ----------------------------------
-      # ansible.cfg 作成（超重要）
-      # Pythonバージョンを統一する
-      # ----------------------------------
+      # ansible.cfg
       - |
         cat > ansible.cfg << 'EOF'
         [defaults]
         inventory = inventory/hosts
-        roles_path = playbooks/roles
-
-        # ★重要：python3（CodeBuildと同じ環境）を使用
-        interpreter_python = /usr/bin/python3
-
+        interpreter_python = auto_silent
         host_key_checking = False
         stdout_callback = yaml
         timeout = 60
-
-        [inventory]
-        enable_plugins = host_list, script, yaml, ini, auto
         EOF
 
   pre_build:
     commands:
-      - echo "===== pre_build フェーズ ====="
-
-      # ----------------------------------
-      # Terraform出力をS3から取得
-      # ----------------------------------
-      - aws s3 cp s3://$S3_BUCKET/ansible-outputs.json ansible/outputs.json --region $AWS_REGION
-
-      # 確認
-      - echo "===== outputs.json 確認 ====="
-      - cat ansible/outputs.json
+      - aws s3 cp s3://$S3_BUCKET/ansible-outputs.json ansible/outputs.json
 
   build:
     commands:
-      - echo "===== build フェーズ ====="
-
-      # ----------------------------------
-      # 作業ディレクトリへ移動
-      # ----------------------------------
       - cd ansible
-
-      # ----------------------------------
-      # ansible.cfg を有効化
-      # ----------------------------------
       - export ANSIBLE_CONFIG=../ansible.cfg
 
-      # ----------------------------------
-      # inventory生成（S3 → hosts）
-      # ----------------------------------
       - python3 generate_inventory.py
 
-      # ----------------------------------
-      # SSM接続用環境変数
-      # ----------------------------------
-      - export ANSIBLE_AWS_SSM_S3_BUCKET=$S3_BUCKET
-      - export ANSIBLE_AWS_SSM_REGION=$AWS_REGION
-      - export AWS_DEFAULT_REGION=$AWS_REGION
-
-      # ----------------------------------
-      # inventory確認（デバッグ）
-      # ----------------------------------
-      - echo "===== inventory 内容 ====="
-      - cat inventory/hosts
-
-      - echo "===== inventory JSON ====="
       - ansible-inventory -i inventory/hosts --list
 
-      # ----------------------------------
-      # ❌ pingテストは実行しない
-      # 理由：
-      # 初回はboto3がEC2に無く失敗するため
-      # ----------------------------------
-
-      # ----------------------------------
-      # Playbook実行
-      # ----------------------------------
-      - echo "===== Ansible 実行 ====="
       - ansible-playbook -i inventory/hosts playbooks/main.yml -vvvv
 
   post_build:
     commands:
-      - echo "===== 完了 ====="
-      - echo "Ansible 実行成功"
-
-artifacts:
-  files:
-    - ansible/inventory/hosts
+      - echo "done"
