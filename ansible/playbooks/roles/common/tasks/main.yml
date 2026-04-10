@@ -1,5 +1,17 @@
 ---
 # 共通サービス: すべてのサーバーに適用
+- name: Install Python pip for RHEL 9
+  yum:
+    name: python3-pip
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Install boto3 library
+  pip:
+    name: boto3
+    executable: pip3
+  when: ansible_os_family == "RedHat"
+
 - name: Disable SELinux immediately for RHEL 9
   ansible.posix.selinux:
     policy: targeted
@@ -14,11 +26,12 @@
     enabled: no
   when: ansible_os_family == "RedHat"
 
-- name: Install Amazon SSM Agent for RHEL 9
-  yum:
-    name: "https://s3.ap-south-1.amazonaws.com/amazon-ssm-ap-south-1/latest/linux_amd64/amazon-ssm-agent.rpm"
-    state: present
-  when: ansible_os_family == "RedHat"
+# SSM Agent は AMI にプリインストールされているので、インストール不要
+# - name: Install Amazon SSM Agent for RHEL 9
+#   yum:
+#     name: "https://s3.ap-south-1.amazonaws.com/amazon-ssm-ap-south-1/latest/linux_amd64/amazon-ssm-agent.rpm"
+#     state: present
+#   when: ansible_os_family == "RedHat"
 
 - name: Ensure Amazon SSM Agent is enabled and started
   service:
