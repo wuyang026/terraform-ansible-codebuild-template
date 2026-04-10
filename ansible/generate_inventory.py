@@ -47,3 +47,4 @@ with open("inventory/hosts", "w") as f:
     f.write("ansible_aws_ssm_timeout=120\n")
     f.write("ansible_aws_ssm_s3_addressing_style=virtual\n")
     f.write("ansible_python_interpreter=/usr/bin/python3\n")
+    f.write("ansible_remote_tmp=/tmp/.ansible/tmp\n")

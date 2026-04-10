@@ -31,6 +31,8 @@ phases:
         host_key_checking = False
         stdout_callback = yaml
         timeout = 60
+        remote_tmp = /tmp/.ansible/tmp
+        local_tmp = /tmp/.ansible/localtmp
         EOF
 
   build:
