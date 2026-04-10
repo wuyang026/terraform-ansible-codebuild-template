@@ -21,6 +21,7 @@ phases:
       - |
         if [ "$ACTION" = "destroy" ]; then
           cd $TERRAFORM_WORKDIR
+          terraform init -reconfigure
           terraform destroy -auto-approve
         else
           cd $TERRAFORM_WORKDIR
