@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
 
+
 import json
 
 S3_BUCKET = "go-s3-bucket-test"  # デフォルト
-
-# outputs.json から S3 バケット名を取得（なければデフォルト）
+outputs = {}
 try:
     with open('outputs.json', 'r') as f:
         outputs = json.load(f)
         if 's3_bucket' in outputs and 'value' in outputs['s3_bucket']:
             S3_BUCKET = str(outputs['s3_bucket']['value'])
 except Exception:
-    pass
-
-
-# Terraformの出力を読み込む（上で取得済み）
+    outputs = {}
 
 # inventory/hosts を生成
 with open('inventory/hosts', 'w') as f:
