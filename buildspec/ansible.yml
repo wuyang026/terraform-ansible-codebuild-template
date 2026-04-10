@@ -2,105 +2,79 @@ version: 0.2
 
 env:
   variables:
-    # SSM経由でAnsibleが一時ファイルを保存するS3バケット
+    # SSM用S3バケット
     S3_BUCKET: "go-s3-bucket-test"
 
 phases:
   install:
     commands:
       - echo "===== install フェーズ ====="
-      
-      # 基本パッケージのインストール
+
+      # 基本パッケージ
       - yum update -y --allowerasing
       - yum install -y python3 python3-pip ansible awscli unzip curl --allowerasing
-      
-      # Pythonライブラリ（AWS連携用）
+
+      # AWS SDK
       - pip3 install boto3 botocore
-      
-      # Session Manager Plugin（SSM接続に必須）
+
+      # SSMプラグイン
       - curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" -o /tmp/session-manager-plugin.rpm
       - yum install -y /tmp/session-manager-plugin.rpm
-      
-      # Pluginの確認
-      - echo "===== session-manager-plugin 確認 ====="
+
+      # 確認
       - which session-manager-plugin
-      - session-manager-plugin || true
-      
-      # AnsibleのAWS関連コレクションをインストール
+
+      # Ansible AWSコレクション
       - ansible-galaxy collection install amazon.aws community.aws
-      
+
       # バージョン確認
       - ansible --version
       - python3 --version
-      - aws --version
 
-      # ansible.cfg を生成
+      # ansible.cfg生成
       - |
         cat > ansible.cfg << 'EOF'
         [defaults]
         inventory = inventory/hosts
         roles_path = playbooks/roles
-        interpreter_python = /usr/bin/python3.9
+        interpreter_python = /usr/bin/python3
         host_key_checking = False
         stdout_callback = yaml
-        timeout = 60
 
         [inventory]
-        enable_plugins = aws_ec2, host_list, script, yaml, ini, auto
-
-        [ssh_connection]
-        ssh_args = -o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no
+        enable_plugins = host_list, script, yaml, ini, auto
         EOF
 
   pre_build:
     commands:
       - echo "===== pre_build フェーズ ====="
-      
-      # Terraformの出力ファイルをS3から取得
+
+      # Terraform出力取得
       - aws s3 cp s3://$S3_BUCKET/ansible-outputs.json ansible/outputs.json --region $AWS_REGION
-      
-      # ファイル確認
-      - ls -l ansible/
-      - cat ansible/outputs.json
 
   build:
     commands:
       - echo "===== build フェーズ ====="
-      
+
       - cd ansible
-      
-      # inventory を動的生成
+
+      # inventory生成
       - python3 generate_inventory.py
-      
-      # SSM接続用の環境変数（※正しい変数名に注意）
+
+      # 環境変数設定
       - export ANSIBLE_AWS_SSM_S3_BUCKET=$S3_BUCKET
       - export ANSIBLE_AWS_SSM_REGION=$AWS_REGION
       - export AWS_DEFAULT_REGION=$AWS_REGION
-      
-      # 環境変数確認（デバッグ用）
-      - echo "===== 環境変数確認 ====="
-      - env | grep ANSIBLE
-      
-      # inventory内容確認
-      - echo "===== 生成された inventory ====="
-      - cat inventory/hosts
-      
-      # inventoryの構造確認（JSON形式）
-      - echo "===== inventory JSON ====="
-      - ansible-inventory -i inventory/hosts --list
-      
-      # SSM接続テスト（非常に重要）
-      - echo "===== SSM接続テスト ====="
-      - ansible dbservers -i inventory/hosts -m ping -vvvv || true
-      
-      # playbook 実行
-      - echo "===== Ansible 実行 ====="
-      - ansible-playbook -i inventory/hosts playbooks/main.yml -vvvv
+
+      # 接続テスト
+      - ansible dbservers -m ping -vvvv
+
+      # playbook実行
+      - ansible-playbook playbooks/main.yml -vvvv
 
   post_build:
     commands:
-      - echo "===== post_build フェーズ ====="
-      - echo "Ansible 実行完了"
+      - echo "===== 完了 ====="
 
 artifacts:
   files:

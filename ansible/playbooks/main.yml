@@ -1,24 +1,25 @@
 ---
-- name: Install dependencies
+# ==========================================
+# Play 1: Pythonブートストラップ
+# （Pythonが無い環境でも動作させるため）
+# ==========================================
+- name: Bootstrap Python
   hosts: dbservers
-  become: yes
-  gather_facts: false
+  gather_facts: no
+
   tasks:
-    - name: Ensure Python 3 and Boto3 are installed on the remote host
-      yum:
-        name:
-          - python3
-          - python3-pip
-          - python3-boto3
-        state: present
+    # Python3が存在しない場合のみインストール
+    - name: Ensure python3 exists
+      raw: |
+        command -v python3 || yum install -y python3
 
-- name: Common services for all servers
+# ==========================================
+# Play 2: 共通設定適用
+# ==========================================
+- name: Common configuration
   hosts: dbservers
   become: yes
-  gather_facts: true
-
-  vars:
-    ansible_python_interpreter: /usr/bin/python3.9
+  gather_facts: yes
 
   roles:
     - common
