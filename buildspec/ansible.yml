@@ -54,7 +54,7 @@ phases:
       - /usr/bin/python3.9 /usr/bin/ansible-config dump --only-changed
       - /usr/bin/python3.9 /usr/bin/ansible-inventory -i inventory/hosts --list
 
-      - /usr/bin/python3.9 /usr/bin/ansible-playbook -i inventory/hosts playbooks/main.yml -vvvv
+      - /usr/bin/python3.9 /usr/bin/ansible-playbook -i inventory/hosts playbooks/main.yml
 
   post_build:
     commands:
