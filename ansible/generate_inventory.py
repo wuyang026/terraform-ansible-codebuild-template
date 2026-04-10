@@ -19,7 +19,7 @@ with open("inventory/hosts", "w") as f:
     f.write("[dbservers]\n")
 
     def write_instance(name, inst):
-        f.write(f"{name} ansible_host={inst['id']} ansible_connection=aws_ssm\n")
+        f.write(f"{name} ansible_host={inst['id']}\n")
 
     for name, inst in data["primary_instances"]["value"].items():
         write_instance(name, inst)
