@@ -174,6 +174,12 @@ resource "aws_instance" "primary" {
     Name = "PrimaryDB-${count.index + 1}"
     Role = "primary"
   }
+  depends_on = [
+    aws_vpc_endpoint.ssm,
+    aws_vpc_endpoint.ssm_messages,
+    aws_vpc_endpoint.ec2_messages,
+    aws_vpc_endpoint.s3
+  ]
 }
 
 ############################################
@@ -199,4 +205,10 @@ resource "aws_instance" "standby" {
     Name = "StandbyDB-${count.index + 1}"
     Role = "standby"
   }
+  depends_on = [
+    aws_vpc_endpoint.ssm,
+    aws_vpc_endpoint.ssm_messages,
+    aws_vpc_endpoint.ec2_messages,
+    aws_vpc_endpoint.s3
+  ]
 }
