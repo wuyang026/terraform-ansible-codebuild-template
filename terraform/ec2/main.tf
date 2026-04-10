@@ -16,23 +16,30 @@ resource "aws_iam_role" "ec2_role" {
   })
 }
 
+############################################
+# SSM用ポリシーのアタッチ
+############################################
 resource "aws_iam_role_policy_attachment" "ssm" {
   role       = aws_iam_role.ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+############################################
+# EC2インスタンスプロファイル
+############################################
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = "ec2-ssm-profile"
   role = aws_iam_role.ec2_role.name
 }
 
 ############################################
-# DB用 Security Group
+# DB用セキュリティグループ
 ############################################
 resource "aws_security_group" "db_sg" {
   name_prefix = "db-sg-"
   vpc_id      = var.vpc_id
 
+  # DBポート許可（テスト用に全開）
   ingress {
     from_port   = var.db_port
     to_port     = var.db_port
@@ -40,6 +47,7 @@ resource "aws_security_group" "db_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # アウトバウンド全許可
   egress {
     from_port   = 0
     to_port     = 0
@@ -53,12 +61,13 @@ resource "aws_security_group" "db_sg" {
 }
 
 ############################################
-# SSM Endpoint専用SG（重要修正）
+# SSM VPCエンドポイント用セキュリティグループ
 ############################################
 resource "aws_security_group" "ssm_endpoint_sg" {
   name   = "ssm-endpoint-sg"
   vpc_id = var.vpc_id
 
+  # HTTPS通信許可
   ingress {
     from_port   = 443
     to_port     = 443
@@ -66,6 +75,7 @@ resource "aws_security_group" "ssm_endpoint_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # アウトバウンド全許可
   egress {
     from_port   = 0
     to_port     = 0
@@ -75,7 +85,7 @@ resource "aws_security_group" "ssm_endpoint_sg" {
 }
 
 ############################################
-# VPC Endpoint（SSM）
+# SSM関連VPCエンドポイント（Interface型）
 ############################################
 resource "aws_vpc_endpoint" "ssm" {
   vpc_id              = var.vpc_id
@@ -105,36 +115,39 @@ resource "aws_vpc_endpoint" "ec2_messages" {
 }
 
 ############################################
-# user_data（RHEL9 + SSM完全修正版）
+# S3 VPCエンドポイント（Gateway型）
+############################################
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = var.vpc_id
+  service_name      = "com.amazonaws.${var.region}.s3"
+  vpc_endpoint_type = "Gateway"
+
+  route_table_ids = data.aws_route_tables.main.ids
+}
+
+############################################
+# EC2用 user_data（SSMインストール）
 ############################################
 locals {
   user_data = <<-EOF
 #!/bin/bash
-set -xe
+set -euxo pipefail
 
-LOG_FILE="/var/log/user-data.log"
-exec > >(tee -a $LOG_FILE) 2>&1
+echo "SSMエージェントをインストール中..."
 
-echo "===== USER DATA START ====="
-
-
-echo "SSM Agent install..."
+dnf clean all || true
 
 dnf install -y https://s3.${var.region}.amazonaws.com/amazon-ssm-${var.region}/latest/linux_amd64/amazon-ssm-agent.rpm
 
 systemctl enable amazon-ssm-agent
 systemctl restart amazon-ssm-agent
 
-sleep 10
-
 systemctl status amazon-ssm-agent || true
-
-echo "===== USER DATA END ====="
 EOF
 }
 
 ############################################
-# EC2 Primary
+# EC2（Primary）
 ############################################
 resource "aws_instance" "primary" {
   count         = var.primary_count
@@ -159,7 +172,7 @@ resource "aws_instance" "primary" {
 }
 
 ############################################
-# EC2 Standby
+# EC2（Standby）
 ############################################
 resource "aws_instance" "standby" {
   count         = var.standby_count
