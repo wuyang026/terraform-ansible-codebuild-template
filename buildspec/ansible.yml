@@ -20,7 +20,7 @@ phases:
       # AWS SDK（CodeBuild側用）
       # ※SSM接続で必須（ここ超重要）
       # ----------------------------------
-      - pip3 install boto3 botocore
+      - python3.9 -m pip install boto3 botocore
 
       # ----------------------------------
       # SSM Session Manager Plugin
